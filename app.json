@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "BBF Check-in",
+    "slug": "bbf-checkin",
+    "scheme": "bbfcheckin",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0B1220"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "assets/adaptive-icon.png",
+        "backgroundColor": "#0B1220"
+      },
+      "package": "com.bbf.checkin"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow BBF Check-in to access the camera for scanning QR codes."
+        }
+      ]
+    ],
+    "extra": {
+      "API_BASE_URL": "https://bangladeshbrandforum.com/checkin/api",
+      "SCAN_PATH": "/scan",
+      "eas": {
+        "projectId": "22d7f880-7a57-4dee-8ee3-a1b0f1a2ca43"
+      }
+    }
+  }
+}
