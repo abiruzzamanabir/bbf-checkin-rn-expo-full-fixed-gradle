@@ -12,6 +12,7 @@ export const HISTORY_KEY = "bbf_scan_history";
  *   direction: "IN"|"OUT",
  *   status: "SUCCESS"|"FAIL"|"OFFLINE_SAVED",
  *   qr_code: string,
+ *   gate?: string,          // ⭐ Gate added
  *   name?: string,
  *   company?: string,
  *   message?: string,
@@ -20,8 +21,10 @@ export const HISTORY_KEY = "bbf_scan_history";
 
 export async function pushHistory(item) {
   const list = await getHistory();
-  // De-dup: avoid rapid duplicate inserts (e.g., same QR held in frame)
+
   const top = list[0];
+
+  // Prevent duplicate scans within 1.5 seconds
   if (
     top &&
     item &&
@@ -34,12 +37,29 @@ export async function pushHistory(item) {
   ) {
     return;
   }
-  list.unshift(item);
+
+  const safeItem = {
+    id: item.id || String(Date.now()),
+    ts: item.ts || Date.now(),
+    time_label: item.time_label || "",
+    direction: item.direction || "",
+    status: item.status || "",
+    qr_code: item.qr_code || "",
+    gate: item.gate || "", // ⭐ stored gate
+    name: item.name || "",
+    company: item.company || "",
+    message: item.message || "",
+  };
+
+  list.unshift(safeItem);
+
+  // Keep max 2000 history records
   await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(0, 2000)));
 }
 
 export async function getHistory() {
   const raw = await AsyncStorage.getItem(HISTORY_KEY);
+
   try {
     return raw ? JSON.parse(raw) : [];
   } catch {
@@ -52,13 +72,16 @@ export async function clearHistory() {
 }
 
 export async function enqueueOfflineScan(payload) {
-  const q = await getOfflineQueue();
-  q.push(payload);
-  await AsyncStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(q));
+  const queue = await getOfflineQueue();
+
+  queue.push(payload);
+
+  await AsyncStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
 }
 
 export async function getOfflineQueue() {
   const raw = await AsyncStorage.getItem(OFFLINE_QUEUE_KEY);
+
   try {
     return raw ? JSON.parse(raw) : [];
   } catch {

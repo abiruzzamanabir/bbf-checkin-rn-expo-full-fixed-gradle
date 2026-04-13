@@ -27,7 +27,3 @@ eas build -p android --profile production
 ## Notes
 - Uses `react-native-gesture-handler` + `react-native-reanimated` pinned to Expo SDK 51 compatible versions.
 - Includes `babel.config.js` with Reanimated plugin.
-
-
-## Event/Gate/Direction
-Select event, gate and IN/OUT on Home screen before scanning.

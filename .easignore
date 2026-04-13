@@ -1,0 +1,38 @@
+# dependencies
+node_modules
+
+# git
+.git
+.gitignore
+
+# expo cache
+.expo
+.expo-shared
+
+# logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode
+.idea
+
+# tests
+__tests__
+
+# android studio build files
+android/.gradle
+android/build
+
+# temp
+*.tmp
+*.temp
+
+# large media
+*.mp4
+*.mov
+*.zip

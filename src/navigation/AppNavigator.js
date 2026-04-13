@@ -1,53 +1,58 @@
 import React, { useEffect, useState } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { View, ActivityIndicator, StatusBar } from "react-native";
+
 import LoginScreen from "../screens/LoginScreen";
-import HomeScreen from "../screens/HomeScreen";
-import ScannerScreen from "../screens/ScannerScreen";
-import HistoryScreen from "../screens/HistoryScreen";
-import AdminScreen from "../screens/AdminScreen";
+import SplashScreen from "../screens/SplashScreen";
+import MainTabs from "./MainTabs";
+
 import { getToken } from "../storage/token";
 import { useRole } from "../context/RoleContext";
 
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
-  const [initialRoute, setInitialRoute] = useState("Login");
+  const [authRoute, setAuthRoute] = useState("Login");
   const [ready, setReady] = useState(false);
-  const { ready: roleReady, role } = useRole();
+
+  const { ready: roleReady } = useRole();
 
   useEffect(() => {
     (async () => {
-      const t = await getToken();
-      setInitialRoute(t ? "Home" : "Login");
+      const token = await getToken();
+
+      setAuthRoute(token ? "Main" : "Login");
+
       setReady(true);
     })();
   }, []);
 
-  if (!ready || !roleReady) return null;
+  if (!ready || !roleReady) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
 
   return (
     <NavigationContainer>
+      <StatusBar barStyle="light-content" backgroundColor="#071B3A" />
+
       <Stack.Navigator
-        initialRouteName={initialRoute}
-        screenOptions={{
-          headerTintColor: "white",
-          headerStyle: { backgroundColor: "#0b1220" },
-          headerTitleStyle: { fontWeight: "900" },
-        }}
+        initialRouteName="Splash"
+        screenOptions={{ headerShown: false }}
       >
-        <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Home" component={HomeScreen} options={{ title: "BBF Check-in" }} />
-        <Stack.Screen name="Scanner" component={ScannerScreen} options={{ title: "Scan QR" }} />
-        <Stack.Screen name="History" component={HistoryScreen} options={{ title: "History" }} />
         <Stack.Screen
-          name="Admin"
-          component={AdminScreen}
-          options={{
-            title: "Admin",
-            // simple guard: if not admin, still allow but screen will show unlock UI
-          }}
+          name="Splash"
+          component={SplashScreen}
+          initialParams={{ nextRoute: authRoute }}
         />
+
+        <Stack.Screen name="Login" component={LoginScreen} />
+
+        <Stack.Screen name="Main" component={MainTabs} />
       </Stack.Navigator>
     </NavigationContainer>
   );

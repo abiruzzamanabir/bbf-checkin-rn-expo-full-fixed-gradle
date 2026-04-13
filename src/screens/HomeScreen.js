@@ -1,5 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, Pressable, Modal, FlatList } from "react-native";
+import {
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  Modal,
+  FlatList,
+} from "react-native";
+
 import { clearToken } from "../storage/token";
 import { logout, me } from "../api/auth";
 import { fetchEvents } from "../api/events";
@@ -17,33 +25,22 @@ function SelectModal({
 }) {
   return (
     <Modal visible={visible} transparent animationType="fade">
-      <View className="flex-1 bg-black/60 justify-center p-5">
-        <View className="bg-[#101a2d] rounded-2xl border border-[#1e2b45] p-4 max-h-[80%]">
-          <Text className="text-white text-lg font-black mb-3">{title}</Text>
+      <View style={styles.modalBackdrop}>
+        <View style={styles.modalCard}>
+          <Text style={styles.modalTitle}>{title}</Text>
 
           <FlatList
             data={items}
             keyExtractor={keyExtractor}
-            ItemSeparatorComponent={() => (
-              <View className="h-[1px] bg-[#1e2b45]" />
-            )}
             renderItem={({ item }) => (
-              <Pressable
-                className="py-3 px-2 rounded-xl"
-                onPress={() => onPick(item)}
-              >
-                <Text className="text-white font-extrabold">
-                  {renderLabel(item)}
-                </Text>
+              <Pressable style={styles.modalItem} onPress={() => onPick(item)}>
+                <Text style={styles.modalItemText}>{renderLabel(item)}</Text>
               </Pressable>
             )}
           />
 
-          <Pressable
-            onPress={onClose}
-            className="mt-3 py-3 rounded-xl bg-[#27324a] items-center"
-          >
-            <Text className="text-white font-bold">Close</Text>
+          <Pressable style={styles.modalClose} onPress={onClose}>
+            <Text style={styles.modalCloseText}>Close</Text>
           </Pressable>
         </View>
       </View>
@@ -53,7 +50,6 @@ function SelectModal({
 
 export default function HomeScreen({ navigation }) {
   const [user, setUser] = useState(null);
-
   const [events, setEvents] = useState([]);
   const [gates, setGates] = useState([]);
 
@@ -102,7 +98,7 @@ export default function HomeScreen({ navigation }) {
         setLocalSettings(next);
       }
     })();
-  }, [navigation]);
+  }, []);
 
   const eventName = settings.event?.name || "Select event";
   const gateName = settings.gate?.name
@@ -111,11 +107,10 @@ export default function HomeScreen({ navigation }) {
 
   async function onPickEvent(ev) {
     setEventModal(false);
-
     const gs = await fetchGates(ev.slug);
     setGates(gs);
 
-    const firstGate = gs.length ? gs.find((g) => g.is_active) || gs[0] : null;
+    const firstGate = gs.find((g) => g.is_active) || gs[0] || null;
 
     const next = await setSettings({
       event: ev,
@@ -127,7 +122,6 @@ export default function HomeScreen({ navigation }) {
 
   async function onPickGate(g) {
     setGateModal(false);
-
     const next = await setSettings({ gate: g });
     setLocalSettings(next);
   }
@@ -149,81 +143,62 @@ export default function HomeScreen({ navigation }) {
     });
   }
 
-  const canScan = !!settings.event && !!settings.direction;
+  const canScan = !!settings.event && !!settings.gate;
 
   return (
-    <View className="flex-1 bg-[#0b1220] p-5">
-      <Text className="text-white text-2xl font-extrabold mt-2">
-        BBF Check-in
-      </Text>
+    <View style={styles.container}>
+      <Text style={styles.header}>BBF Check-in</Text>
 
-      <Text className="text-[#b6c2d9] mt-2 mb-4">
-        {user
-          ? `Logged in as: ${user.name || "User"} (${user.role || "role"})`
-          : "Loading profile..."}
-      </Text>
+      <View style={styles.profileCard}>
+        <Text style={styles.profileName}>{user?.name || "User"}</Text>
 
-      <Text className="text-white font-extrabold mb-2">Setup</Text>
+        <Text style={styles.profileRole}>{user?.role || "Operator"}</Text>
+      </View>
 
-      {/* Event selector */}
-      <Pressable
-        className="bg-[#101a2d] border border-[#1e2b45] rounded-xl p-3 mb-3"
-        onPress={() => setEventModal(true)}
-      >
-        <Text className="text-[#7f8fb3] font-bold mb-1">Event</Text>
-        <Text className="text-white font-extrabold">{eventName}</Text>
+      <Text style={styles.section}>Scanner Setup</Text>
+
+      <Pressable style={styles.selector} onPress={() => setEventModal(true)}>
+        <Text style={styles.selectorLabel}>Event</Text>
+        <Text style={styles.selectorValue}>{eventName}</Text>
       </Pressable>
 
-      {/* Gate selector */}
-      <Pressable
-        className={`bg-[#101a2d] border border-[#1e2b45] rounded-xl p-3 mb-3 ${
-          !settings.event ? "opacity-50" : ""
-        }`}
-        disabled={!settings.event}
-        onPress={() => setGateModal(true)}
-      >
-        <Text className="text-[#7f8fb3] font-bold mb-1">Gate</Text>
-        <Text className="text-white font-extrabold">{gateName}</Text>
+      <Pressable style={styles.selector} onPress={() => setGateModal(true)}>
+        <Text style={styles.selectorLabel}>Gate</Text>
+        <Text style={styles.selectorValue}>{gateName}</Text>
       </Pressable>
 
-      {/* Direction toggle */}
-      <View className="flex-row gap-3 mt-1 mb-4">
+      <View style={styles.toggleRow}>
         <Pressable
+          style={[
+            styles.toggle,
+            settings.direction === "IN" && styles.toggleActive,
+          ]}
           onPress={() => setDirection("IN")}
-          className={`flex-1 p-3 rounded-xl border border-[#1e2b45] items-center ${
-            settings.direction === "IN" ? "bg-[#2f6bff]" : "bg-[#101a2d]"
-          }`}
         >
-          <Text className="text-white font-black">IN</Text>
+          <Text style={styles.toggleText}>CHECK IN</Text>
         </Pressable>
 
         <Pressable
+          style={[
+            styles.toggle,
+            settings.direction === "OUT" && styles.toggleActive,
+          ]}
           onPress={() => setDirection("OUT")}
-          className={`flex-1 p-3 rounded-xl border border-[#1e2b45] items-center ${
-            settings.direction === "OUT" ? "bg-[#2f6bff]" : "bg-[#101a2d]"
-          }`}
         >
-          <Text className="text-white font-black">OUT</Text>
+          <Text style={styles.toggleText}>CHECK OUT</Text>
         </Pressable>
       </View>
 
-      {/* Scanner */}
       <Pressable
+        style={[styles.scanButton, !canScan && { opacity: 0.5 }]}
         disabled={!canScan}
         onPress={() => navigation.navigate("Scanner")}
-        className={`p-4 rounded-xl items-center mt-2 ${
-          canScan ? "bg-[#2f6bff]" : "bg-[#2f6bff]/50"
-        }`}
       >
-        <Text className="text-white font-extrabold">Open Scanner</Text>
+        <Text style={styles.scanText}>Open Scanner</Text>
       </Pressable>
 
-      {/* Logout */}
-      <Pressable
-        onPress={onLogout}
-        className="p-4 rounded-xl items-center mt-3 bg-[#27324a]"
-      >
-        <Text className="text-white font-extrabold">Logout</Text>
+      <Pressable style={styles.logoutBtn} onPress={onLogout}>
+        <Text style={styles.logoutText}>Logout</Text>
       </Pressable>
 
       <SelectModal
@@ -248,3 +223,151 @@ export default function HomeScreen({ navigation }) {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 22,
+    backgroundColor: "#071B3A",
+  },
+
+  header: {
+    color: "white",
+    fontSize: 28,
+    fontWeight: "900",
+    marginBottom: 20,
+  },
+
+  profileCard: {
+    backgroundColor: "#0B1220",
+    padding: 16,
+    borderRadius: 14,
+    marginBottom: 22,
+  },
+
+  profileName: {
+    color: "white",
+    fontSize: 18,
+    fontWeight: "800",
+  },
+
+  profileRole: {
+    color: "#9FB4D9",
+    marginTop: 4,
+  },
+
+  section: {
+    color: "#9FB4D9",
+    marginBottom: 10,
+  },
+
+  selector: {
+    backgroundColor: "#0B1220",
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 10,
+  },
+
+  selectorLabel: {
+    color: "#7f8fb3",
+    fontSize: 12,
+  },
+
+  selectorValue: {
+    color: "white",
+    fontWeight: "800",
+    marginTop: 2,
+  },
+
+  toggleRow: {
+    flexDirection: "row",
+    marginTop: 10,
+    gap: 10,
+  },
+
+  toggle: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: "#0B1220",
+    alignItems: "center",
+  },
+
+  toggleActive: {
+    backgroundColor: "#2563EB",
+  },
+
+  toggleText: {
+    color: "white",
+    fontWeight: "800",
+  },
+
+  scanButton: {
+    backgroundColor: "#22C55E",
+    padding: 18,
+    borderRadius: 14,
+    alignItems: "center",
+    marginTop: 20,
+  },
+
+  scanText: {
+    color: "#071B3A",
+    fontWeight: "900",
+    fontSize: 16,
+  },
+
+  logoutBtn: {
+    marginTop: 12,
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: "#1e293b",
+    alignItems: "center",
+  },
+
+  logoutText: {
+    color: "white",
+    fontWeight: "700",
+  },
+
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    padding: 20,
+  },
+
+  modalCard: {
+    backgroundColor: "#0B1220",
+    borderRadius: 14,
+    padding: 18,
+    maxHeight: "70%",
+  },
+
+  modalTitle: {
+    color: "white",
+    fontSize: 18,
+    fontWeight: "800",
+    marginBottom: 10,
+  },
+
+  modalItem: {
+    padding: 12,
+  },
+
+  modalItemText: {
+    color: "white",
+  },
+
+  modalClose: {
+    marginTop: 10,
+    backgroundColor: "#ef4444",
+    padding: 12,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+
+  modalCloseText: {
+    color: "white",
+    fontWeight: "700",
+  },
+});
