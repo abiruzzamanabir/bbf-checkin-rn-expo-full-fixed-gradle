@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { NavigationContainer } from "@react-navigation/native";
+import React, { useState, useEffect } from "react";
+import { NavigationContainer, DarkTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { View, ActivityIndicator, StatusBar } from "react-native";
 
@@ -7,53 +7,75 @@ import LoginScreen from "../screens/LoginScreen";
 import SplashScreen from "../screens/SplashScreen";
 import MainTabs from "./MainTabs";
 
-import { getToken } from "../storage/token";
 import { useRole } from "../context/RoleContext";
 
 const Stack = createNativeStackNavigator();
 
+/* ---------------- CUSTOM DARK THEME ---------------- */
+
+const MyTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    background: "#08111F",
+  },
+};
+
+/* ---------------- MAIN NAVIGATOR ---------------- */
+
 export default function AppNavigator() {
-  const [authRoute, setAuthRoute] = useState("Login");
+  const { ready: roleReady } = useRole();
   const [ready, setReady] = useState(false);
 
-  const { ready: roleReady } = useRole();
-
   useEffect(() => {
-    (async () => {
-      const token = await getToken();
-
-      setAuthRoute(token ? "Main" : "Login");
-
-      setReady(true);
-    })();
+    // small delay for smoother startup
+    setTimeout(() => setReady(true), 200);
   }, []);
+
+  /* -------- GLOBAL LOADING -------- */
 
   if (!ready || !roleReady) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" />
+      <View style={styles.loader}>
+        <StatusBar barStyle="light-content" backgroundColor="#08111F" />
+        <ActivityIndicator size="large" color="#22C55E" />
       </View>
     );
   }
 
+  /* -------- NAVIGATION -------- */
+
   return (
-    <NavigationContainer>
-      <StatusBar barStyle="light-content" backgroundColor="#071B3A" />
+    <NavigationContainer theme={MyTheme}>
+      <StatusBar barStyle="light-content" backgroundColor="#08111F" />
 
       <Stack.Navigator
         initialRouteName="Splash"
-        screenOptions={{ headerShown: false }}
+        screenOptions={{
+          headerShown: false,
+          animation: "fade",
+        }}
       >
-        <Stack.Screen
-          name="Splash"
-          component={SplashScreen}
-          initialParams={{ nextRoute: authRoute }}
-        />
+        {/* SPLASH = SINGLE SOURCE OF TRUTH */}
+        <Stack.Screen name="Splash" component={SplashScreen} />
 
+        {/* AUTH */}
         <Stack.Screen name="Login" component={LoginScreen} />
 
+        {/* APP */}
         <Stack.Screen name="Main" component={MainTabs} />
       </Stack.Navigator>
     </NavigationContainer>
   );
 }
+
+/* ---------------- STYLES ---------------- */
+
+const styles = {
+  loader: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#08111F",
+  },
+};

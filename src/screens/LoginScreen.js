@@ -1,218 +1,764 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+
 import {
   View,
-  Text,
-  TextInput,
-  Pressable,
   StyleSheet,
-  Alert,
+  StatusBar,
+  ScrollView,
+  TouchableOpacity,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  Animated,
+  ActivityIndicator,
+  Modal,
+  Dimensions,
 } from "react-native";
 
+import {
+  Text,
+  TextInput,
+  Provider as PaperProvider,
+  MD3DarkTheme,
+} from "react-native-paper";
+
+import { SafeAreaView } from "react-native-safe-area-context";
+
+import { LinearGradient } from "expo-linear-gradient";
+
+import { BlurView } from "expo-blur";
+
+import * as Device from "expo-device";
+
+import {
+  QrCode,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  Smartphone,
+  ShieldCheck,
+  Fingerprint,
+  ChevronRight,
+  TriangleAlert,
+  Activity,
+  ScanFace,
+} from "lucide-react-native";
+
 import { login } from "../api/auth";
+
 import { setToken } from "../storage/token";
 
-export default function LoginScreen({ navigation }) {
+const { width } = Dimensions.get("window");
 
+const theme = {
+  ...MD3DarkTheme,
+
+  colors: {
+    ...MD3DarkTheme.colors,
+
+    primary: "#3B82F6",
+
+    background: "#020617",
+
+    surface: "#0F172A",
+  },
+};
+
+export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState("scanner@bbf.com");
+
   const [password, setPassword] = useState("");
-  const [deviceName, setDeviceName] = useState("Scanner Device");
+
+  const [deviceName, setDeviceName] = useState("");
+
+  const [secure, setSecure] = useState(true);
+
   const [loading, setLoading] = useState(false);
 
+  const [errorModal, setErrorModal] = useState(false);
+
+  const [errorMessage, setErrorMessage] = useState("");
+
+  /* ANIMATION */
+
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  const slideAnim = useRef(new Animated.Value(50)).current;
+
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 700,
+        useNativeDriver: true,
+      }),
+
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        friction: 7,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.08,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+      ]),
+    ).start();
+  }, []);
+
+  /* DEVICE */
+
+  useEffect(() => {
+    async function loadDevice() {
+      try {
+        const brand = Device.brand || "";
+
+        const model = Device.modelName || "";
+
+        setDeviceName(`${brand} ${model}`.trim());
+      } catch {
+        setDeviceName("Unknown Device");
+      }
+    }
+
+    loadDevice();
+  }, []);
+
+  /* LOGIN */
+
   async function onLogin() {
+    if (!email || !password) {
+      setErrorMessage("Please enter your email and password.");
+
+      setErrorModal(true);
+
+      return;
+    }
+
     try {
       setLoading(true);
 
       const data = await login({
         email,
         password,
-        device_name: deviceName
+        device_name: deviceName,
       });
 
       await setToken(data.token);
 
-      navigation.reset({
-        index: 0,
-        routes: [{ name: "Home" }]
-      });
-
+      navigation.replace("Main");
     } catch (e) {
+      const msg = e?.response?.data?.message || "Invalid email or password.";
 
-      const msg =
-        e?.response?.data?.message ||
-        e?.response?.data?.error ||
-        "Login failed. Check credentials.";
+      setErrorMessage(msg);
 
-      Alert.alert("Login failed", msg);
-
+      setErrorModal(true);
     } finally {
       setLoading(false);
     }
   }
 
   return (
-
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-
-      {/* Logo */}
-      <View style={styles.logoBox}>
-        <Text style={styles.logoText}>BBF</Text>
-        <Text style={styles.logoSub}>Check-in</Text>
-      </View>
-
-      {/* Card */}
-      <View style={styles.card}>
-
-        <Text style={styles.title}>Scanner Login</Text>
-        <Text style={styles.subtitle}>
-          Login with your event scanner account
-        </Text>
-
-        <TextInput
-          value={email}
-          onChangeText={setEmail}
-          placeholder="Email"
-          placeholderTextColor="#7a8aa6"
-          style={styles.input}
-          autoCapitalize="none"
-        />
-
-        <TextInput
-          value={password}
-          onChangeText={setPassword}
-          placeholder="Password"
-          placeholderTextColor="#7a8aa6"
-          style={styles.input}
-          secureTextEntry
-        />
-
-        <TextInput
-          value={deviceName}
-          onChangeText={setDeviceName}
-          placeholder="Device name"
-          placeholderTextColor="#7a8aa6"
-          style={styles.input}
-        />
-
-        <Pressable
-          style={[styles.button, loading && { opacity: 0.7 }]}
-          onPress={onLogin}
-          disabled={loading}
+    <PaperProvider theme={theme}>
+      <SafeAreaView style={styles.safe}>
+        <LinearGradient
+          colors={["#020617", "#071226", "#0F172A"]}
+          style={styles.container}
         >
-          <Text style={styles.buttonText}>
-            {loading ? "Authenticating..." : "Login"}
-          </Text>
-        </Pressable>
+          <StatusBar barStyle="light-content" />
 
-      </View>
+          {/* GLOW */}
 
-      {/* Demo Accounts */}
-      <View style={styles.demoBox}>
-        <Text style={styles.demoTitle}>Demo Accounts</Text>
+          <View style={styles.glow1} />
 
-        <Text style={styles.demoText}>
-          Admin: admin@bbf.com / Admin123!
-        </Text>
+          <View style={styles.glow2} />
 
-        <Text style={styles.demoText}>
-          Scanner: scanner@bbf.com / ChangeMe123!
-        </Text>
-      </View>
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+          >
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.scroll}
+            >
+              {/* HEADER */}
 
-    </KeyboardAvoidingView>
+              <Animated.View
+                style={[
+                  styles.header,
+                  {
+                    opacity: fadeAnim,
 
+                    transform: [
+                      {
+                        translateY: slideAnim,
+                      },
+                    ],
+                  },
+                ]}
+              >
+                <Animated.View
+                  style={{
+                    transform: [
+                      {
+                        scale: pulseAnim,
+                      },
+                    ],
+                  }}
+                >
+                  <LinearGradient
+                    colors={["#2563EB", "#1D4ED8"]}
+                    style={styles.logoWrap}
+                  >
+                    <QrCode size={58} color="#FFFFFF" />
+                  </LinearGradient>
+                </Animated.View>
+
+                <Text style={styles.brand}>BBF CHECK-IN</Text>
+
+                <Text style={styles.subtitle}>
+                  Enterprise Event Operations Platform
+                </Text>
+
+                <BlurView intensity={20} tint="dark" style={styles.statusBadge}>
+                  <Activity size={14} color="#22C55E" />
+
+                  <Text style={styles.statusText}>LIVE SYSTEM ONLINE</Text>
+                </BlurView>
+              </Animated.View>
+
+              {/* CARD */}
+
+              <Animated.View
+                style={{
+                  opacity: fadeAnim,
+
+                  transform: [
+                    {
+                      translateY: slideAnim,
+                    },
+                  ],
+                }}
+              >
+                <BlurView intensity={35} tint="dark" style={styles.card}>
+                  {/* CARD HEADER */}
+
+                  <View style={styles.cardHeader}>
+                    <View>
+                      <Text style={styles.cardTitle}>Scanner Access</Text>
+
+                      <Text style={styles.cardDesc}>
+                        Secure login for attendee validation and real-time event
+                        operations.
+                      </Text>
+                    </View>
+
+                    <LinearGradient
+                      colors={["#172554", "#1E293B"]}
+                      style={styles.faceWrap}
+                    >
+                      <ScanFace size={24} color="#60A5FA" />
+                    </LinearGradient>
+                  </View>
+
+                  {/* EMAIL */}
+
+                  <View style={styles.fieldContainer}>
+                    <Text style={styles.fieldLabel}>EMAIL ADDRESS</Text>
+
+                    <LinearGradient
+                      colors={[
+                        "rgba(255,255,255,0.06)",
+                        "rgba(255,255,255,0.03)",
+                      ]}
+                      style={styles.inputBox}
+                    >
+                      <View style={styles.iconWrap}>
+                        <Mail size={18} color="#60A5FA" />
+                      </View>
+
+                      <TextInput
+                        mode="flat"
+                        value={email}
+                        onChangeText={setEmail}
+                        placeholder="scanner@bbf.com"
+                        placeholderTextColor="#475569"
+                        autoCapitalize="none"
+                        style={styles.premiumInput}
+                        underlineColor="transparent"
+                        activeUnderlineColor="transparent"
+                        cursorColor="#3B82F6"
+                        theme={{
+                          colors: {
+                            text: "#FFFFFF",
+                            primary: "#3B82F6",
+                            background: "transparent",
+                          },
+                        }}
+                      />
+                    </LinearGradient>
+                  </View>
+
+                  {/* PASSWORD */}
+
+                  <View style={styles.fieldContainer}>
+                    <Text style={styles.fieldLabel}>PASSWORD</Text>
+
+                    <LinearGradient
+                      colors={[
+                        "rgba(255,255,255,0.06)",
+                        "rgba(255,255,255,0.03)",
+                      ]}
+                      style={styles.inputBox}
+                    >
+                      <View style={styles.iconWrap}>
+                        <Lock size={18} color="#60A5FA" />
+                      </View>
+
+                      <TextInput
+                        mode="flat"
+                        value={password}
+                        onChangeText={setPassword}
+                        secureTextEntry={secure}
+                        placeholder="Enter password"
+                        placeholderTextColor="#475569"
+                        style={styles.premiumInput}
+                        underlineColor="transparent"
+                        activeUnderlineColor="transparent"
+                        cursorColor="#3B82F6"
+                        theme={{
+                          colors: {
+                            text: "#FFFFFF",
+                            primary: "#3B82F6",
+                            background: "transparent",
+                          },
+                        }}
+                      />
+
+                      <TouchableOpacity
+                        style={styles.eyeWrap}
+                        onPress={() => setSecure(!secure)}
+                      >
+                        {secure ? (
+                          <EyeOff size={18} color="#64748B" />
+                        ) : (
+                          <Eye size={18} color="#64748B" />
+                        )}
+                      </TouchableOpacity>
+                    </LinearGradient>
+                  </View>
+
+                  {/* DEVICE */}
+
+                  <View style={styles.fieldContainer}>
+                    <Text style={styles.fieldLabel}>SCANNER DEVICE</Text>
+
+                    <LinearGradient
+                      colors={[
+                        "rgba(255,255,255,0.05)",
+                        "rgba(255,255,255,0.02)",
+                      ]}
+                      style={styles.inputBox}
+                    >
+                      <View style={styles.iconWrap}>
+                        <Smartphone size={18} color="#22C55E" />
+                      </View>
+
+                      <TextInput
+                        mode="flat"
+                        value={deviceName}
+                        editable={false}
+                        placeholder="Device"
+                        placeholderTextColor="#475569"
+                        style={styles.premiumInput}
+                        underlineColor="transparent"
+                        activeUnderlineColor="transparent"
+                        theme={{
+                          colors: {
+                            text: "#94A3B8",
+                            background: "transparent",
+                          },
+                        }}
+                      />
+                    </LinearGradient>
+                  </View>
+
+                  {/* LOGIN */}
+
+                  <TouchableOpacity
+                    activeOpacity={0.92}
+                    onPress={onLogin}
+                    disabled={loading}
+                  >
+                    <LinearGradient
+                      colors={["#2563EB", "#1D4ED8", "#1E40AF"]}
+                      style={styles.loginBtn}
+                    >
+                      {loading ? (
+                        <ActivityIndicator color="#FFFFFF" />
+                      ) : (
+                        <>
+                          <Text style={styles.loginText}>LOGIN TO SYSTEM</Text>
+
+                          <ChevronRight size={20} color="#FFFFFF" />
+                        </>
+                      )}
+                    </LinearGradient>
+                  </TouchableOpacity>
+
+                  {/* INFO */}
+
+                  <View style={styles.infoRow}>
+                    <BlurView
+                      intensity={25}
+                      tint="dark"
+                      style={styles.infoCard}
+                    >
+                      <ShieldCheck size={16} color="#22C55E" />
+
+                      <Text style={styles.infoTextGreen}>Secure Access</Text>
+                    </BlurView>
+
+                    <BlurView
+                      intensity={25}
+                      tint="dark"
+                      style={styles.infoCard}
+                    >
+                      <Fingerprint size={16} color="#60A5FA" />
+
+                      <Text style={styles.infoTextBlue}>Biometrics</Text>
+                    </BlurView>
+                  </View>
+                </BlurView>
+              </Animated.View>
+
+              {/* FOOTER */}
+
+              <Text style={styles.footer}>Bangladesh Brand Forum</Text>
+            </ScrollView>
+          </KeyboardAvoidingView>
+
+          {/* ERROR MODAL */}
+
+          <Modal visible={errorModal} transparent animationType="fade">
+            <View style={styles.modalBackdrop}>
+              <BlurView intensity={40} tint="dark" style={styles.modalCard}>
+                <LinearGradient
+                  colors={["#DC2626", "#B91C1C"]}
+                  style={styles.modalIcon}
+                >
+                  <TriangleAlert size={40} color="#FFFFFF" />
+                </LinearGradient>
+
+                <Text style={styles.modalTitle}>Login Failed</Text>
+
+                <Text style={styles.modalMessage}>{errorMessage}</Text>
+
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  onPress={() => setErrorModal(false)}
+                >
+                  <LinearGradient
+                    colors={["#2563EB", "#1D4ED8"]}
+                    style={styles.modalBtn}
+                  >
+                    <Text style={styles.modalBtnText}>TRY AGAIN</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </BlurView>
+            </View>
+          </Modal>
+        </LinearGradient>
+      </SafeAreaView>
+    </PaperProvider>
   );
 }
 
 const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: "#020617",
+  },
 
   container: {
     flex: 1,
-    backgroundColor: "#071B3A",
+  },
+
+  scroll: {
+    flexGrow: 1,
     justifyContent: "center",
-    padding: 24
+    paddingHorizontal: 22,
+    paddingVertical: 40,
   },
 
-  logoBox: {
+  glow1: {
+    position: "absolute",
+    width: 340,
+    height: 340,
+    borderRadius: 999,
+    backgroundColor: "rgba(37,99,235,0.20)",
+    top: -120,
+    right: -80,
+  },
+
+  glow2: {
+    position: "absolute",
+    width: 240,
+    height: 240,
+    borderRadius: 999,
+    backgroundColor: "rgba(34,197,94,0.10)",
+    bottom: -60,
+    left: -60,
+  },
+
+  header: {
     alignItems: "center",
-    marginBottom: 30
+    marginBottom: 34,
   },
 
-  logoText: {
-    fontSize: 46,
+  logoWrap: {
+    width: 120,
+    height: 120,
+    borderRadius: 999,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 24,
+    elevation: 12,
+  },
+
+  brand: {
+    color: "#FFFFFF",
+    fontSize: 36,
     fontWeight: "900",
-    color: "#ffffff"
-  },
-
-  logoSub: {
-    fontSize: 16,
-    color: "#9FB4D9",
-    marginTop: -6
-  },
-
-  card: {
-    backgroundColor: "#0B1220",
-    borderRadius: 18,
-    padding: 22,
-    borderWidth: 1,
-    borderColor: "#1e2b45"
-  },
-
-  title: {
-    color: "white",
-    fontSize: 22,
-    fontWeight: "800",
-    textAlign: "center"
+    letterSpacing: 1.5,
   },
 
   subtitle: {
-    color: "#9FB4D9",
+    color: "#94A3B8",
+    marginTop: 10,
     textAlign: "center",
-    marginBottom: 20
+    fontSize: 14,
   },
 
-  input: {
-    backgroundColor: "#071B3A",
-    borderRadius: 12,
-    padding: 14,
-    color: "white",
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "#1e2b45"
-  },
-
-  button: {
-    backgroundColor: "#2563EB",
-    padding: 16,
-    borderRadius: 12,
+  statusBadge: {
+    marginTop: 18,
+    flexDirection: "row",
     alignItems: "center",
-    marginTop: 6
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 999,
+    overflow: "hidden",
   },
 
-  buttonText: {
-    color: "white",
+  statusText: {
+    color: "#22C55E",
     fontWeight: "800",
-    fontSize: 16
+    fontSize: 12,
+    letterSpacing: 0.5,
   },
 
-  demoBox: {
-    marginTop: 24,
-    alignItems: "center"
+  card: {
+    borderRadius: 36,
+    overflow: "hidden",
+    padding: 24,
+    backgroundColor: "rgba(15,23,42,0.72)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
   },
 
-  demoTitle: {
-    color: "#9FB4D9",
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 28,
+  },
+
+  cardTitle: {
+    color: "#FFFFFF",
+    fontSize: 30,
+    fontWeight: "900",
+  },
+
+  cardDesc: {
+    color: "#94A3B8",
+    marginTop: 8,
+    lineHeight: 22,
+    width: width * 0.55,
+  },
+
+  faceWrap: {
+    width: 58,
+    height: 58,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  fieldContainer: {
+    marginBottom: 18,
+  },
+
+  fieldLabel: {
+    color: "#94A3B8",
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1.5,
+    marginBottom: 10,
+    marginLeft: 4,
+  },
+
+  inputBox: {
+    height: 66,
+    borderRadius: 22,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+    overflow: "hidden",
+  },
+
+  iconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+
+  premiumInput: {
+    flex: 1,
+    backgroundColor: "transparent",
+    color: "#FFFFFF",
+    fontSize: 15,
+  },
+
+  eyeWrap: {
+    padding: 6,
+    marginLeft: 10,
+  },
+
+  loginBtn: {
+    height: 64,
+    borderRadius: 22,
+    marginTop: 12,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 10,
+    elevation: 12,
+  },
+
+  loginText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "900",
+    letterSpacing: 1,
+  },
+
+  infoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 22,
+    gap: 12,
+  },
+
+  infoCard: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 18,
+    overflow: "hidden",
+  },
+
+  infoTextGreen: {
+    color: "#22C55E",
     fontWeight: "700",
-    marginBottom: 6
   },
 
-  demoText: {
-    color: "#7f8fb3",
-    fontSize: 13
-  }
+  infoTextBlue: {
+    color: "#60A5FA",
+    fontWeight: "700",
+  },
 
+  footer: {
+    marginTop: 30,
+    textAlign: "center",
+    color: "#475569",
+    fontWeight: "700",
+    fontSize: 13,
+  },
+
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 24,
+  },
+
+  modalCard: {
+    width: "100%",
+    borderRadius: 34,
+    overflow: "hidden",
+    padding: 28,
+    alignItems: "center",
+    backgroundColor: "rgba(15,23,42,0.92)",
+  },
+
+  modalIcon: {
+    width: 84,
+    height: 84,
+    borderRadius: 999,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 22,
+  },
+
+  modalTitle: {
+    color: "#FFFFFF",
+    fontSize: 28,
+    fontWeight: "900",
+    marginBottom: 12,
+  },
+
+  modalMessage: {
+    color: "#CBD5E1",
+    textAlign: "center",
+    lineHeight: 24,
+    marginBottom: 24,
+  },
+
+  modalBtn: {
+    width: 220,
+    height: 56,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  modalBtnText: {
+    color: "#FFFFFF",
+    fontWeight: "900",
+    letterSpacing: 1,
+  },
 });

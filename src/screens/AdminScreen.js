@@ -1,147 +1,293 @@
-import React, { useMemo, useState } from "react";
-import { View, Text, StyleSheet, Pressable, TextInput, Alert } from "react-native";
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  TextInput,
+  Alert,
+  SafeAreaView,
+  ActivityIndicator,
+} from "react-native";
+
 import { useRole } from "../context/RoleContext";
-import { pushHistory, enqueueOfflineScan, getOfflineQueue, setOfflineQueue } from "../storage/scans";
+import {
+  pushHistory,
+  enqueueOfflineScan,
+  getOfflineQueue,
+  setOfflineQueue,
+} from "../storage/scans";
 
 const ADMIN_PIN = "2468";
 
 export default function AdminScreen() {
   const { role, setRole } = useRole();
+
   const [pin, setPin] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const isAdmin = role === "ADMIN";
 
   const unlock = async () => {
+    if (!pin.trim()) return;
+
     if (pin.trim() === ADMIN_PIN) {
       await setRole("ADMIN");
       setPin("");
-      Alert.alert("Admin unlocked", "Admin mode enabled on this device.");
+      Alert.alert("Admin enabled", "You now have admin access.");
     } else {
-      Alert.alert("Wrong PIN", "Please try again.");
+      Alert.alert("Incorrect PIN", "Try again.");
     }
   };
 
   const lock = async () => {
     await setRole("OPERATOR");
-    Alert.alert("Admin disabled", "Back to operator mode.");
+    Alert.alert("Admin disabled", "Switched back to operator mode.");
   };
 
   const simulate = async () => {
-    // 1000 scans in history + 150 offline queue items to test sync UI
-    const now = Date.now();
-    for (let i = 0; i < 1000; i++) {
-      const dir = i % 2 === 0 ? "IN" : "OUT";
-      await pushHistory({
-        id: `SIM-${now}-${i}`,
-        ts: now + i,
-        time_label: new Date(now + i * 1000).toLocaleTimeString(),
-        direction: dir,
-        status: "SUCCESS",
-        qr_code: `BBF-SIM-${String(i).padStart(4, "0")}`,
-        name: `Sim User ${i + 1}`,
-        company: "Stress Test",
-        message: "Simulated scan",
-      });
-    }
+    try {
+      setLoading(true);
 
-    // Add some offline items to test progress bar
-    const offline = await getOfflineQueue();
-    const extra = [];
-    for (let i = 0; i < 150; i++) {
-      extra.push({
-        qr_code: `BBF-OFF-${String(i).padStart(4, "0")}`,
-        event_slug: "stress-test",
-        direction: i % 2 === 0 ? "IN" : "OUT",
-        gate_code: "SIM",
-        device_uuid: "SIMULATOR",
-        ts: now + i,
-      });
-    }
-    await setOfflineQueue([...offline, ...extra]);
+      const now = Date.now();
 
-    Alert.alert("Stress test ready", "Added 1,000 history items + 150 offline items.");
+      // HISTORY
+      for (let i = 0; i < 1000; i++) {
+        const dir = i % 2 === 0 ? "IN" : "OUT";
+
+        await pushHistory({
+          id: `SIM-${now}-${i}`,
+          ts: now + i,
+          time_label: new Date(now + i * 1000).toLocaleTimeString(),
+          direction: dir,
+          status: "SUCCESS",
+          qr_code: `BBF-SIM-${String(i).padStart(4, "0")}`,
+          name: `Sim User ${i + 1}`,
+          company: "Stress Test",
+          message: "Simulated scan",
+        });
+      }
+
+      // OFFLINE QUEUE
+      const offline = await getOfflineQueue();
+
+      const extra = [];
+      for (let i = 0; i < 150; i++) {
+        extra.push({
+          qr_code: `BBF-OFF-${String(i).padStart(4, "0")}`,
+          event_slug: "stress-test",
+          direction: i % 2 === 0 ? "IN" : "OUT",
+          gate_code: "SIM",
+          device_uuid: "SIMULATOR",
+          ts: now + i,
+        });
+      }
+
+      await setOfflineQueue([...offline, ...extra]);
+
+      Alert.alert(
+        "Stress test ready",
+        "1,000 scans + 150 offline items added.",
+      );
+    } catch (e) {
+      Alert.alert("Error", "Simulation failed.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Admin</Text>
+    <SafeAreaView style={styles.container}>
+      {/* HEADER */}
+      <View style={styles.header}>
+        <Text style={styles.title}>Admin Panel</Text>
 
-      <Text style={styles.label}>Current role</Text>
-      <Text style={styles.value}>{role}</Text>
+        <View
+          style={[
+            styles.roleBadge,
+            isAdmin ? styles.adminBadge : styles.operatorBadge,
+          ]}
+        >
+          <Text style={styles.roleText}>{role}</Text>
+        </View>
+      </View>
 
+      {/* LOCKED VIEW */}
       {!isAdmin ? (
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Unlock admin mode</Text>
+          <Text style={styles.cardTitle}>Unlock Admin Access</Text>
+          <Text style={styles.subText}>
+            Enter PIN to enable advanced controls.
+          </Text>
+
           <TextInput
             value={pin}
             onChangeText={setPin}
             placeholder="Enter PIN"
-            placeholderTextColor="rgba(255,255,255,0.45)"
+            placeholderTextColor="#6B7280"
             secureTextEntry
             keyboardType="number-pad"
             style={styles.input}
           />
+
           <Pressable onPress={unlock} style={styles.primaryBtn}>
             <Text style={styles.primaryText}>Unlock</Text>
           </Pressable>
-          <Text style={styles.hint}>Tip: long-press the IN/OUT switch on scanner to open admin.</Text>
+
+          <Text style={styles.hint}>
+            Long-press IN/OUT switch on scanner to open admin.
+          </Text>
         </View>
       ) : (
+        /* ADMIN VIEW */
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Admin actions</Text>
+          <Text style={styles.cardTitle}>Admin Controls</Text>
 
-          <Pressable onPress={simulate} style={styles.btn}>
-            <Text style={styles.btnText}>Run stress-test (simulate 1,000 scans)</Text>
+          {/* STRESS TEST */}
+          <Pressable onPress={simulate} style={styles.actionBtn}>
+            {loading ? (
+              <ActivityIndicator />
+            ) : (
+              <>
+                <Text style={styles.actionTitle}>Run Stress Test</Text>
+                <Text style={styles.actionSub}>
+                  Simulates 1,000 scans + 150 offline entries
+                </Text>
+              </>
+            )}
           </Pressable>
 
-          <Pressable onPress={lock} style={[styles.btn, { marginTop: 10 }]}>
-            <Text style={styles.btnText}>Disable admin mode</Text>
+          {/* LOCK */}
+          <Pressable onPress={lock} style={styles.dangerBtn}>
+            <Text style={styles.dangerText}>Disable Admin Mode</Text>
           </Pressable>
         </View>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0B1220", padding: 14 },
-  title: { color: "white", fontSize: 18, fontWeight: "900", marginBottom: 12 },
-  label: { color: "rgba(255,255,255,0.65)", fontWeight: "700" },
-  value: { color: "white", fontWeight: "900", marginTop: 6, marginBottom: 14 },
-  card: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
+  container: {
+    flex: 1,
+    backgroundColor: "#08111F",
+    padding: 16,
   },
-  cardTitle: { color: "white", fontWeight: "900", marginBottom: 10 },
-  input: {
-    height: 44,
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-    color: "white",
+
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+
+  title: {
+    color: "#FFFFFF",
+    fontSize: 22,
     fontWeight: "900",
   },
+
+  roleBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+
+  adminBadge: {
+    backgroundColor: "#14532D",
+  },
+
+  operatorBadge: {
+    backgroundColor: "#1E293B",
+  },
+
+  roleText: {
+    color: "#FFFFFF",
+    fontWeight: "900",
+    fontSize: 12,
+  },
+
+  card: {
+    backgroundColor: "#111827",
+    borderRadius: 20,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: "#1F2937",
+  },
+
+  cardTitle: {
+    color: "#FFFFFF",
+    fontWeight: "900",
+    fontSize: 18,
+    marginBottom: 8,
+  },
+
+  subText: {
+    color: "#9CA3AF",
+    marginBottom: 12,
+    fontWeight: "600",
+  },
+
+  input: {
+    height: 48,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    backgroundColor: "#020617",
+    borderWidth: 1,
+    borderColor: "#263856",
+    color: "#FFFFFF",
+    fontWeight: "900",
+  },
+
   primaryBtn: {
+    marginTop: 12,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: "#3B82F6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  primaryText: {
+    color: "#FFFFFF",
+    fontWeight: "900",
+  },
+
+  actionBtn: {
+    backgroundColor: "#1E293B",
+    padding: 14,
+    borderRadius: 16,
     marginTop: 10,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: "#79C2FF",
-    alignItems: "center",
-    justifyContent: "center",
   },
-  primaryText: { color: "#0B1220", fontWeight: "900" },
-  btn: {
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.10)",
-    alignItems: "center",
-    justifyContent: "center",
+
+  actionTitle: {
+    color: "#FFFFFF",
+    fontWeight: "900",
+    fontSize: 14,
   },
-  btnText: { color: "white", fontWeight: "900" },
-  hint: { color: "rgba(255,255,255,0.60)", marginTop: 10, fontWeight: "700" },
+
+  actionSub: {
+    color: "#94A3B8",
+    fontSize: 12,
+    marginTop: 4,
+  },
+
+  dangerBtn: {
+    marginTop: 14,
+    backgroundColor: "#7F1D1D",
+    padding: 14,
+    borderRadius: 16,
+    alignItems: "center",
+  },
+
+  dangerText: {
+    color: "#FFFFFF",
+    fontWeight: "900",
+  },
+
+  hint: {
+    color: "#6B7280",
+    marginTop: 10,
+    fontSize: 12,
+  },
 });

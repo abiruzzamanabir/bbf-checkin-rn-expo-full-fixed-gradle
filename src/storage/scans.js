@@ -3,36 +3,38 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 export const OFFLINE_QUEUE_KEY = "bbf_offline_scans";
 export const HISTORY_KEY = "bbf_scan_history";
 
-/**
- * History item shape:
- * {
- *   id: string,
- *   ts: number,
- *   time_label: string,
- *   direction: "IN"|"OUT",
- *   status: "SUCCESS"|"FAIL"|"OFFLINE_SAVED",
- *   qr_code: string,
- *   gate?: string,          // ⭐ Gate added
- *   name?: string,
- *   company?: string,
- *   message?: string,
- * }
- */
+/* ---------------- SAFE JSON ---------------- */
+
+async function readJSON(key) {
+  try {
+    const raw = await AsyncStorage.getItem(key);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+async function writeJSON(key, value) {
+  try {
+    await AsyncStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // silent fail
+  }
+}
+
+/* ---------------- HISTORY ---------------- */
 
 export async function pushHistory(item) {
-  const list = await getHistory();
-
+  const list = await readJSON(HISTORY_KEY);
   const top = list[0];
 
-  // Prevent duplicate scans within 1.5 seconds
+  // 🔐 Prevent rapid duplicates (1.5s)
   if (
     top &&
     item &&
     top.qr_code === item.qr_code &&
     top.direction === item.direction &&
     top.status === item.status &&
-    typeof top.ts === "number" &&
-    typeof item.ts === "number" &&
     item.ts - top.ts < 1500
   ) {
     return;
@@ -45,7 +47,7 @@ export async function pushHistory(item) {
     direction: item.direction || "",
     status: item.status || "",
     qr_code: item.qr_code || "",
-    gate: item.gate || "", // ⭐ stored gate
+    gate: item.gate || "",
     name: item.name || "",
     company: item.company || "",
     message: item.message || "",
@@ -53,44 +55,51 @@ export async function pushHistory(item) {
 
   list.unshift(safeItem);
 
-  // Keep max 2000 history records
-  await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(0, 2000)));
+  // 🔒 Limit size (avoid memory blow)
+  await writeJSON(HISTORY_KEY, list.slice(0, 2000));
 }
 
 export async function getHistory() {
-  const raw = await AsyncStorage.getItem(HISTORY_KEY);
-
-  try {
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
+  return await readJSON(HISTORY_KEY);
 }
 
 export async function clearHistory() {
   await AsyncStorage.removeItem(HISTORY_KEY);
 }
 
+/* ---------------- OFFLINE QUEUE ---------------- */
+
 export async function enqueueOfflineScan(payload) {
-  const queue = await getOfflineQueue();
+  const queue = await readJSON(OFFLINE_QUEUE_KEY);
 
-  queue.push(payload);
+  // 🔐 Prevent duplicate queue entry
+  const exists = queue.find(
+    (q) =>
+      q.qr_code === payload.qr_code &&
+      q.direction === payload.direction &&
+      Math.abs(q.ts - payload.ts) < 2000,
+  );
 
-  await AsyncStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
+  if (exists) return;
+
+  queue.push({
+    ...payload,
+    ts: payload.ts || Date.now(),
+    retry: 0, // 🔁 retry count
+  });
+
+  // 🔒 Limit queue size
+  const trimmed = queue.slice(-500);
+
+  await writeJSON(OFFLINE_QUEUE_KEY, trimmed);
 }
 
 export async function getOfflineQueue() {
-  const raw = await AsyncStorage.getItem(OFFLINE_QUEUE_KEY);
-
-  try {
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
+  return await readJSON(OFFLINE_QUEUE_KEY);
 }
 
 export async function setOfflineQueue(queue) {
-  await AsyncStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue || []));
+  await writeJSON(OFFLINE_QUEUE_KEY, queue || []);
 }
 
 export async function clearOfflineQueue() {
