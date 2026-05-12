@@ -8,8 +8,8 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "splash": {
-    "backgroundColor": "#071B3A"
-  },
+      "backgroundColor": "#071B3A"
+    },
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -21,7 +21,11 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0b1220"
       },
-      "package": "com.bbf.checkin"
+      "package": "com.bbf.checkin",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -40,6 +44,12 @@
       "eas": {
         "projectId": "22d7f880-7a57-4dee-8ee3-a1b0f1a2ca43"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/22d7f880-7a57-4dee-8ee3-a1b0f1a2ca43"
     }
   }
 }

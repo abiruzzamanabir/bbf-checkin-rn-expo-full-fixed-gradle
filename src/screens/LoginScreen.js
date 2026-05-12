@@ -42,6 +42,7 @@ import {
   TriangleAlert,
   Activity,
   ScanFace,
+  Sparkles,
 } from "lucide-react-native";
 
 import { login } from "../api/auth";
@@ -65,7 +66,7 @@ const theme = {
 };
 
 export default function LoginScreen({ navigation }) {
-  const [email, setEmail] = useState("scanner@bbf.com");
+  const [email, setEmail] = useState("");
 
   const [password, setPassword] = useState("");
 
@@ -78,8 +79,6 @@ export default function LoginScreen({ navigation }) {
   const [errorModal, setErrorModal] = useState(false);
 
   const [errorMessage, setErrorMessage] = useState("");
-
-  /* ANIMATION */
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -105,21 +104,19 @@ export default function LoginScreen({ navigation }) {
     Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
-          toValue: 1.08,
-          duration: 1200,
+          toValue: 1.06,
+          duration: 1400,
           useNativeDriver: true,
         }),
 
         Animated.timing(pulseAnim, {
           toValue: 1,
-          duration: 1200,
+          duration: 1400,
           useNativeDriver: true,
         }),
       ]),
     ).start();
   }, []);
-
-  /* DEVICE */
 
   useEffect(() => {
     async function loadDevice() {
@@ -136,8 +133,6 @@ export default function LoginScreen({ navigation }) {
 
     loadDevice();
   }, []);
-
-  /* LOGIN */
 
   async function onLogin() {
     if (!email || !password) {
@@ -180,8 +175,6 @@ export default function LoginScreen({ navigation }) {
         >
           <StatusBar barStyle="light-content" />
 
-          {/* GLOW */}
-
           <View style={styles.glow1} />
 
           <View style={styles.glow2} />
@@ -195,54 +188,6 @@ export default function LoginScreen({ navigation }) {
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.scroll}
             >
-              {/* HEADER */}
-
-              <Animated.View
-                style={[
-                  styles.header,
-                  {
-                    opacity: fadeAnim,
-
-                    transform: [
-                      {
-                        translateY: slideAnim,
-                      },
-                    ],
-                  },
-                ]}
-              >
-                <Animated.View
-                  style={{
-                    transform: [
-                      {
-                        scale: pulseAnim,
-                      },
-                    ],
-                  }}
-                >
-                  <LinearGradient
-                    colors={["#2563EB", "#1D4ED8"]}
-                    style={styles.logoWrap}
-                  >
-                    <QrCode size={58} color="#FFFFFF" />
-                  </LinearGradient>
-                </Animated.View>
-
-                <Text style={styles.brand}>BBF CHECK-IN</Text>
-
-                <Text style={styles.subtitle}>
-                  Enterprise Event Operations Platform
-                </Text>
-
-                <BlurView intensity={20} tint="dark" style={styles.statusBadge}>
-                  <Activity size={14} color="#22C55E" />
-
-                  <Text style={styles.statusText}>LIVE SYSTEM ONLINE</Text>
-                </BlurView>
-              </Animated.View>
-
-              {/* CARD */}
-
               <Animated.View
                 style={{
                   opacity: fadeAnim,
@@ -254,24 +199,53 @@ export default function LoginScreen({ navigation }) {
                   ],
                 }}
               >
-                <BlurView intensity={35} tint="dark" style={styles.card}>
-                  {/* CARD HEADER */}
+                <View style={styles.topHeader}>
+                  <Animated.View
+                    style={{
+                      transform: [
+                        {
+                          scale: pulseAnim,
+                        },
+                      ],
+                    }}
+                  >
+                    <LinearGradient
+                      colors={["#2563EB", "#1D4ED8"]}
+                      style={styles.logoWrap}
+                    >
+                      <QrCode size={54} color="#FFFFFF" />
+                    </LinearGradient>
+                  </Animated.View>
 
-                  <View style={styles.cardHeader}>
+                  <Text style={styles.brand}>BBF CHECK-IN</Text>
+
+                  <Text style={styles.subtitle}>
+                    Enterprise Event Intelligence Platform
+                  </Text>
+
+                  <BlurView intensity={25} tint="dark" style={styles.liveBadge}>
+                    <Activity size={14} color="#22C55E" />
+
+                    <Text style={styles.liveText}>SYSTEM ONLINE</Text>
+                  </BlurView>
+                </View>
+
+                <BlurView intensity={40} tint="dark" style={styles.card}>
+                  <View style={styles.cardTop}>
                     <View>
                       <Text style={styles.cardTitle}>Scanner Access</Text>
 
                       <Text style={styles.cardDesc}>
-                        Secure login for attendee validation and real-time event
-                        operations.
+                        Secure authentication for scanner operations and live
+                        attendee validation.
                       </Text>
                     </View>
 
                     <LinearGradient
                       colors={["#172554", "#1E293B"]}
-                      style={styles.faceWrap}
+                      style={styles.sparkWrap}
                     >
-                      <ScanFace size={24} color="#60A5FA" />
+                      <Sparkles size={22} color="#60A5FA" />
                     </LinearGradient>
                   </View>
 
@@ -282,7 +256,7 @@ export default function LoginScreen({ navigation }) {
 
                     <LinearGradient
                       colors={[
-                        "rgba(255,255,255,0.06)",
+                        "rgba(255,255,255,0.07)",
                         "rgba(255,255,255,0.03)",
                       ]}
                       style={styles.inputBox}
@@ -320,7 +294,7 @@ export default function LoginScreen({ navigation }) {
 
                     <LinearGradient
                       colors={[
-                        "rgba(255,255,255,0.06)",
+                        "rgba(255,255,255,0.07)",
                         "rgba(255,255,255,0.03)",
                       ]}
                       style={styles.inputBox}
@@ -378,22 +352,14 @@ export default function LoginScreen({ navigation }) {
                         <Smartphone size={18} color="#22C55E" />
                       </View>
 
-                      <TextInput
-                        mode="flat"
-                        value={deviceName}
-                        editable={false}
-                        placeholder="Device"
-                        placeholderTextColor="#475569"
-                        style={styles.premiumInput}
-                        underlineColor="transparent"
-                        activeUnderlineColor="transparent"
-                        theme={{
-                          colors: {
-                            text: "#94A3B8",
-                            background: "transparent",
-                          },
-                        }}
-                      />
+                      <View style={styles.deviceReadonly}>
+                        <Text
+                          numberOfLines={1}
+                          style={styles.deviceReadonlyText}
+                        >
+                          {deviceName || "Unknown Device"}
+                        </Text>
+                      </View>
                     </LinearGradient>
                   </View>
 
@@ -420,35 +386,47 @@ export default function LoginScreen({ navigation }) {
                     </LinearGradient>
                   </TouchableOpacity>
 
-                  {/* INFO */}
+                  {/* REGISTER */}
 
-                  <View style={styles.infoRow}>
+                  <TouchableOpacity
+                    activeOpacity={0.9}
+                    onPress={() => navigation.navigate("Register")}
+                    style={styles.registerBtn}
+                  >
+                    <ScanFace size={18} color="#60A5FA" />
+
+                    <Text style={styles.registerText}>
+                      CREATE SCANNER ACCOUNT
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* SECURITY */}
+
+                  <View style={styles.securityRow}>
                     <BlurView
-                      intensity={25}
+                      intensity={30}
                       tint="dark"
-                      style={styles.infoCard}
+                      style={styles.securityCard}
                     >
                       <ShieldCheck size={16} color="#22C55E" />
 
-                      <Text style={styles.infoTextGreen}>Secure Access</Text>
+                      <Text style={styles.securityText}>Secure Access</Text>
                     </BlurView>
 
                     <BlurView
-                      intensity={25}
+                      intensity={30}
                       tint="dark"
-                      style={styles.infoCard}
+                      style={styles.securityCard}
                     >
                       <Fingerprint size={16} color="#60A5FA" />
 
-                      <Text style={styles.infoTextBlue}>Biometrics</Text>
+                      <Text style={styles.securityText}>Biometrics</Text>
                     </BlurView>
                   </View>
                 </BlurView>
+
+                <Text style={styles.footer}>Bangladesh Brand Forum</Text>
               </Animated.View>
-
-              {/* FOOTER */}
-
-              <Text style={styles.footer}>Bangladesh Brand Forum</Text>
             </ScrollView>
           </KeyboardAvoidingView>
 
@@ -456,7 +434,7 @@ export default function LoginScreen({ navigation }) {
 
           <Modal visible={errorModal} transparent animationType="fade">
             <View style={styles.modalBackdrop}>
-              <BlurView intensity={40} tint="dark" style={styles.modalCard}>
+              <BlurView intensity={45} tint="dark" style={styles.modalCard}>
                 <LinearGradient
                   colors={["#DC2626", "#B91C1C"]}
                   style={styles.modalIcon}
@@ -525,26 +503,25 @@ const styles = StyleSheet.create({
     left: -60,
   },
 
-  header: {
+  topHeader: {
     alignItems: "center",
-    marginBottom: 34,
+    marginBottom: 32,
   },
 
   logoWrap: {
-    width: 120,
-    height: 120,
+    width: 118,
+    height: 118,
     borderRadius: 999,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 24,
-    elevation: 12,
+    marginBottom: 22,
   },
 
   brand: {
     color: "#FFFFFF",
-    fontSize: 36,
+    fontSize: 34,
     fontWeight: "900",
-    letterSpacing: 1.5,
+    letterSpacing: 1.2,
   },
 
   subtitle: {
@@ -554,7 +531,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 
-  statusBadge: {
+  liveBadge: {
     marginTop: 18,
     flexDirection: "row",
     alignItems: "center",
@@ -565,23 +542,23 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
 
-  statusText: {
+  liveText: {
     color: "#22C55E",
-    fontWeight: "800",
-    fontSize: 12,
-    letterSpacing: 0.5,
+    fontWeight: "900",
+    fontSize: 11,
+    letterSpacing: 1,
   },
 
   card: {
-    borderRadius: 36,
+    borderRadius: 34,
     overflow: "hidden",
     padding: 24,
-    backgroundColor: "rgba(15,23,42,0.72)",
+    backgroundColor: "rgba(15,23,42,0.76)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.06)",
   },
 
-  cardHeader: {
+  cardTop: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 28,
@@ -597,10 +574,10 @@ const styles = StyleSheet.create({
     color: "#94A3B8",
     marginTop: 8,
     lineHeight: 22,
-    width: width * 0.55,
+    width: width * 0.54,
   },
 
-  faceWrap: {
+  sparkWrap: {
     width: 58,
     height: 58,
     borderRadius: 20,
@@ -615,8 +592,8 @@ const styles = StyleSheet.create({
   fieldLabel: {
     color: "#94A3B8",
     fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 1.5,
+    fontWeight: "900",
+    letterSpacing: 1.4,
     marginBottom: 10,
     marginLeft: 4,
   },
@@ -654,6 +631,17 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
 
+  deviceReadonly: {
+    flex: 1,
+    justifyContent: "center",
+  },
+
+  deviceReadonlyText: {
+    color: "#94A3B8",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+
   loginBtn: {
     height: 64,
     borderRadius: 22,
@@ -662,7 +650,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     gap: 10,
-    elevation: 12,
   },
 
   loginText: {
@@ -672,14 +659,34 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
 
-  infoRow: {
+  registerBtn: {
+    height: 56,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "rgba(96,165,250,0.35)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 14,
+    backgroundColor: "rgba(59,130,246,0.08)",
+    flexDirection: "row",
+    gap: 10,
+  },
+
+  registerText: {
+    color: "#60A5FA",
+    fontSize: 13,
+    fontWeight: "900",
+    letterSpacing: 0.8,
+  },
+
+  securityRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginTop: 22,
     gap: 12,
   },
 
-  infoCard: {
+  securityCard: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
@@ -690,18 +697,13 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
 
-  infoTextGreen: {
-    color: "#22C55E",
-    fontWeight: "700",
-  },
-
-  infoTextBlue: {
-    color: "#60A5FA",
+  securityText: {
+    color: "#CBD5E1",
     fontWeight: "700",
   },
 
   footer: {
-    marginTop: 30,
+    marginTop: 28,
     textAlign: "center",
     color: "#475569",
     fontWeight: "700",
@@ -710,7 +712,7 @@ const styles = StyleSheet.create({
 
   modalBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
+    backgroundColor: "rgba(0,0,0,0.65)",
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 24,

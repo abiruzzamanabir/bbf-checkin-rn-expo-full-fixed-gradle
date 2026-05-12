@@ -194,7 +194,7 @@ export default function MainTabs() {
 
       const finalRole = String(savedRole || "SCANNER").toUpperCase();
 
-      console.log("CURRENT ROLE:", finalRole);
+      console.log("// console", finalRole);
 
       setRole(finalRole);
     } catch (e) {

@@ -94,56 +94,23 @@ function getQR(item) {
 }
 
 function getName(item) {
-  return (
-    item?.name ||
-    item?.full_name ||
-    item?.member_name ||
-    item?.attendee_name ||
-    item?.visitor_name ||
-    item?.profile?.name ||
-    item?.user?.name ||
-    item?.data?.name ||
-    "Unknown Guest"
-  );
+  return item?.attendee?.name || "Unknown Guest";
 }
 
 function getCompany(item) {
-  return (
-    item?.company ||
-    item?.company_name ||
-    item?.organization ||
-    item?.org ||
-    item?.org_name ||
-    item?.profile?.company ||
-    item?.user?.company ||
-    item?.data?.company ||
-    item?.data?.organization ||
-    ""
-  );
+  return item?.attendee?.company || "No Company";
 }
 
 function getDesignation(item) {
-  return (
-    item?.designation ||
-    item?.title ||
-    item?.job_title ||
-    item?.position ||
-    item?.role ||
-    item?.attendee?.designation ||
-    item?.attendee?.title ||
-    item?.attendee?.job_title ||
-    item?.profile?.designation ||
-    item?.profile?.title ||
-    item?.user?.designation ||
-    item?.user?.title ||
-    item?.member?.designation ||
-    item?.member?.title ||
-    item?.data?.designation ||
-    item?.data?.title ||
-    item?.meta?.designation ||
-    item?.meta?.title ||
-    ""
-  );
+  return item?.attendee?.designation || "Attendee";
+}
+
+function getScannerName(item) {
+  return item?.scanner?.name || "Unknown Scanner";
+}
+
+function getScannerEmail(item) {
+  return item?.scanner?.email || "No Email";
 }
 
 function getGate(item) {
@@ -368,7 +335,6 @@ export default function HistoryScreen() {
       setItems(history.length ? [...history] : []);
     } catch (e) {
       // console.log("HISTORY LOAD ERROR:", e);
-
       // console.log("Keeping previous history due to API error");
     }
   }
@@ -984,7 +950,6 @@ function ActivityCard({ item, onPress }) {
   const status = normalizeStatus(item.status);
   const color = getStatusColor(status);
   const direction = getDirection(item);
-
   return (
     <Pressable
       onPress={onPress}
@@ -1040,6 +1005,23 @@ function ActivityCard({ item, onPress }) {
           <View style={styles.metaItem}>
             <Clock3 size={15} color={COLORS.muted} />
             <Text style={styles.metaText}>{safeText(getTime(item))}</Text>
+          </View>
+        </View>
+        <View style={styles.scannerBox}>
+          <View style={styles.scannerIcon}>
+            <ShieldCheck size={15} color="#22C55E" />
+          </View>
+
+          <View style={{ flex: 1 }}>
+            <Text style={styles.scannerLabel}>Scanned By</Text>
+
+            <Text style={styles.scannerName} numberOfLines={1}>
+              {getScannerName(item)}
+            </Text>
+
+            <Text style={styles.scannerEmail} numberOfLines={1}>
+              {getScannerEmail(item)}
+            </Text>
           </View>
         </View>
       </View>
@@ -1731,5 +1713,45 @@ const styles = StyleSheet.create({
   actionButton: {
     flex: 1,
     borderRadius: 18,
+  },
+  scannerBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 14,
+    padding: 12,
+    borderRadius: 16,
+    backgroundColor: "rgba(34,197,94,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(34,197,94,0.16)",
+  },
+
+  scannerIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    backgroundColor: "rgba(34,197,94,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  scannerLabel: {
+    color: "#94A3B8",
+    fontSize: 11,
+    fontWeight: "800",
+    textTransform: "uppercase",
+  },
+
+  scannerName: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "900",
+    marginTop: 2,
+  },
+
+  scannerEmail: {
+    color: "#64748B",
+    fontSize: 12,
+    marginTop: 1,
   },
 });

@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { View, ActivityIndicator, StatusBar } from "react-native";
 
 import LoginScreen from "../screens/LoginScreen";
+import RegisterScreen from "../screens/RegisterScreen";
 import SplashScreen from "../screens/SplashScreen";
 import MainTabs from "./MainTabs";
 
@@ -61,6 +62,9 @@ export default function AppNavigator() {
 
         {/* AUTH */}
         <Stack.Screen name="Login" component={LoginScreen} />
+
+        {/* Register */}
+        <Stack.Screen name="Register" component={RegisterScreen} />
 
         {/* APP */}
         <Stack.Screen name="Main" component={MainTabs} />

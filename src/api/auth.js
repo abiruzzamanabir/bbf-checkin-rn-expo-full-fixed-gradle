@@ -5,6 +5,13 @@ const TOKEN_KEY = "bbf_token";
 const ROLE_KEY = "bbf_role";
 const USER_KEY = "bbf_user";
 
+/* ---------------- REGISTER ---------------- */
+
+export async function registerUser(payload) {
+  const res = await api.post("/auth/register", payload);
+  return res.data;
+}
+
 /* ---------------- LOGIN ---------------- */
 
 export async function login({ email, password, device_name }) {
@@ -30,7 +37,7 @@ export async function login({ email, password, device_name }) {
 
   await AsyncStorage.setItem(USER_KEY, JSON.stringify(user || {}));
 
-  console.log("ROLE SAVED:", role);
+  // console.log("ROLE SAVED:", role);
 
   return {
     token,
@@ -43,7 +50,7 @@ export async function login({ email, password, device_name }) {
 export async function me() {
   const res = await api.get("/auth/me");
 
-  console.log("ME RESPONSE:", res.data);
+  // console.log("ME RESPONSE:", res.data);
 
   const user = res?.data?.user || {};
 
@@ -57,7 +64,7 @@ export async function me() {
 
   await AsyncStorage.setItem(USER_KEY, JSON.stringify(user));
 
-  console.log("UPDATED ROLE:", role);
+  // console.log("UPDATED ROLE:", role);
 
   return res.data;
 }

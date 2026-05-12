@@ -262,6 +262,9 @@ export default function ScannerScreen() {
 
   const [gates, setGates] = useState([]);
   const [gateModal, setGateModal] = useState(false);
+  const [confirmModal, setConfirmModal] = useState(false);
+
+  const [confirmData, setConfirmData] = useState(null);
 
   const direction = settings.direction || "IN";
 
@@ -330,10 +333,10 @@ export default function ScannerScreen() {
 
       if (!validGate) {
         if (validGate && !Boolean(validGate.is_active)) {
-          console.log("DISABLED GATE DETECTED → REMOVING");
+          // console.log("DISABLED GATE DETECTED → REMOVING");
 
           if (validGate && !Boolean(validGate.is_active)) {
-            console.log("DISABLED GATE DETECTED → REMOVING");
+            // console.log("DISABLED GATE DETECTED → REMOVING");
 
             validGate = cleanGates.find((g) => Boolean(g.is_active)) || null;
           }
@@ -370,7 +373,7 @@ export default function ScannerScreen() {
         const changed = JSON.stringify(prev) !== JSON.stringify(updated);
 
         if (changed) {
-          console.log("LIVE SETTINGS UPDATED:", updated);
+          // console.log("LIVE SETTINGS UPDATED:", updated);
 
           return updated;
         }
@@ -378,7 +381,7 @@ export default function ScannerScreen() {
         return prev;
       });
     } catch (e) {
-      console.log("SYNC LIVE SETTINGS ERROR:", e);
+      // console.log("SYNC LIVE SETTINGS ERROR:", e);
     }
   }
   useEffect(() => {
@@ -534,9 +537,9 @@ export default function ScannerScreen() {
             setSettingsState(updated);
           }
 
-          console.log("SCANNER LIVE SETTINGS:", updated);
+          // console.log("SCANNER LIVE SETTINGS:", updated);
         } catch (e) {
-          console.log("SCANNER SETTINGS ERROR:", e);
+          // console.log("SCANNER SETTINGS ERROR:", e);
         }
       }
 
@@ -637,7 +640,7 @@ export default function ScannerScreen() {
           await loadGates();
         }
       } catch (e) {
-        console.log("LIVE REFRESH ERROR:", e);
+        // console.log("LIVE REFRESH ERROR:", e);
       }
     }
 
@@ -668,7 +671,7 @@ export default function ScannerScreen() {
         },
       });
 
-      console.log("GATES RESPONSE:", JSON.stringify(res.data, null, 2));
+      // console.log("GATES RESPONSE:", JSON.stringify(res.data, null, 2));
 
       /* ---------------- */
       /* NORMALIZE        */
@@ -701,7 +704,7 @@ export default function ScannerScreen() {
         currentGate &&
         !activeGates.find((g) => Number(g.id) === Number(currentGate.id))
       ) {
-        console.log("CURRENT GATE DISABLED → AUTO SWITCH");
+        // console.log("CURRENT GATE DISABLED → AUTO SWITCH");
 
         const fallback = activeGates?.[0] || null;
 
@@ -725,7 +728,7 @@ export default function ScannerScreen() {
         setSettingsState(updated);
       }
     } catch (e) {
-      console.log("GATE LOAD ERROR:", e);
+      // console.log("GATE LOAD ERROR:", e);
     }
   }
 
@@ -765,7 +768,7 @@ export default function ScannerScreen() {
 
   async function selectGate(gate) {
     try {
-      console.log("SELECTED GATE:", gate);
+      // console.log("SELECTED GATE:", gate);
 
       const updatedSettings = {
         ...settings,
@@ -801,9 +804,9 @@ export default function ScannerScreen() {
 
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-      console.log("UPDATED SETTINGS:", updatedSettings);
+      // console.log("UPDATED SETTINGS:", updatedSettings);
     } catch (e) {
-      console.log("GATE SWITCH ERROR:", e);
+      // console.log("GATE SWITCH ERROR:", e);
     }
   }
 
@@ -892,8 +895,27 @@ export default function ScannerScreen() {
     return card;
   }
 
-  async function onScanPayload({ qr_code }) {
-    if (!qr_code) return;
+  async function showDirectionConfirm({
+    title,
+    subtitle,
+    nextDirection,
+    qr_code,
+  }) {
+    return new Promise((resolve) => {
+      setConfirmData({
+        title,
+        subtitle,
+        nextDirection,
+        qr_code,
+        resolve,
+      });
+
+      setConfirmModal(true);
+    });
+  }
+
+  async function onScanPayload({ qr_code, overrideDirection = null }) {
+    const activeDirection = overrideDirection || direction;
 
     if (!settings?.event?.slug || !settings?.gate?.id) {
       await makeCard({
@@ -902,7 +924,7 @@ export default function ScannerScreen() {
         designation: "",
         message: "Event or Gate not selected",
         status: "INVALID",
-        directionValue: direction,
+        directionValue: activeDirection,
         qr: qr_code,
         gate: "N/A",
       });
@@ -910,9 +932,101 @@ export default function ScannerScreen() {
       return;
     }
 
+    /* ========================================= */
+    /* DIRECTION VALIDATION                      */
+    /* ========================================= */
+
+    try {
+      const attendeeInfo = await searchTickets({
+        event_slug: settings?.event?.slug,
+        q: qr_code,
+      });
+
+      const item =
+        attendeeInfo?.items?.[0] ||
+        attendeeInfo?.data?.[0] ||
+        attendeeInfo?.results?.[0];
+
+      if (item) {
+        const isInside = Boolean(item?.is_inside);
+
+        // TRYING IN AGAIN
+        if (activeDirection === "IN" && isInside) {
+          const shouldSwitch = await showDirectionConfirm({
+            title: "Already Inside",
+            subtitle:
+              "This attendee is already INSIDE.\nDo you want to switch scanner to OUT mode?",
+            nextDirection: "OUT",
+            qr_code,
+          });
+
+          if (shouldSwitch) {
+            await setDirection("OUT");
+
+            return onScanPayload({
+              qr_code,
+              overrideDirection: "OUT",
+            });
+          }
+
+          await makeCard({
+            name: getAttendeeName(item?.attendee || item),
+            company: getAttendeeCompany(item?.attendee || item),
+            designation: getAttendeeDesignation(item?.attendee || item),
+            message: "User already checked IN.",
+            status: "DUPLICATE",
+            directionValue: activeDirection,
+            qr: qr_code,
+            gate: settings?.gate?.name || settings?.gate?.code || "Main Gate",
+          });
+
+          await playForDirection(false, activeDirection, "DUPLICATE");
+
+          return;
+        }
+
+        // TRYING OUT AGAIN
+        if (activeDirection === "OUT" && !isInside) {
+          const shouldSwitch = await showDirectionConfirm({
+            title: "Already Outside",
+            subtitle:
+              "This attendee is already OUTSIDE.\nDo you want to switch scanner to IN mode?",
+            nextDirection: "IN",
+            qr_code,
+          });
+
+          if (shouldSwitch) {
+            await setDirection("IN");
+
+            return onScanPayload({
+              qr_code,
+              overrideDirection: "IN",
+            });
+          }
+
+          await makeCard({
+            name: getAttendeeName(item?.attendee || item),
+            company: getAttendeeCompany(item?.attendee || item),
+            designation: getAttendeeDesignation(item?.attendee || item),
+            message: "User already checked OUT.",
+            status: "DUPLICATE",
+            directionValue: activeDirection,
+            qr: qr_code,
+            gate: settings?.gate?.name || settings?.gate?.code || "Main Gate",
+          });
+
+          await playForDirection(false, activeDirection, "DUPLICATE");
+
+          return;
+        }
+      }
+    } catch (e) {
+      // console.log("STATUS CHECK ERROR:", e);
+    }
+
     const payload = {
       qr_code,
-      direction,
+      direction: activeDirection,
       event_slug: settings?.event?.slug,
       gate_id: settings?.gate?.id,
       device_uuid: Device.modelId || Device.deviceName || "device",
@@ -944,13 +1058,13 @@ export default function ScannerScreen() {
         designation: getAttendeeDesignation(attendee),
         message,
         status,
-        directionValue: direction,
+        directionValue: activeDirection,
         qr: qr_code,
         gate: settings?.gate?.name || settings?.gate?.code || "Main Gate",
         vip: isVIP,
       });
 
-      await playForDirection(status === "SUCCESS", direction, status);
+      await playForDirection(status === "SUCCESS", activeDirection, status);
       await fetchLiveStats();
     } catch (error) {
       if (error?.response?.data) {
@@ -971,13 +1085,13 @@ export default function ScannerScreen() {
           designation: getAttendeeDesignation(attendee),
           message,
           status,
-          directionValue: direction,
+          directionValue: activeDirection,
           qr: qr_code,
           gate: settings?.gate?.name || settings?.gate?.code || "Main Gate",
           vip: !!attendee?.vip,
         });
 
-        await playForDirection(false, direction, status);
+        await playForDirection(false, activeDirection, status);
         await fetchLiveStats();
         return;
       }
@@ -994,7 +1108,7 @@ export default function ScannerScreen() {
           designation: "",
           message: "Saved locally. Will sync when internet returns.",
           status: "OFFLINE",
-          directionValue: direction,
+          directionValue: activeDirection,
           qr: qr_code,
           gate: settings?.gate?.name || settings?.gate?.code || "Main Gate",
         });
@@ -1003,7 +1117,7 @@ export default function ScannerScreen() {
           Haptics.NotificationFeedbackType.Warning,
         );
 
-        await playForDirection(true, direction, "OFFLINE");
+        await playForDirection(true, activeDirection, "OFFLINE");
         return;
       }
 
@@ -1013,12 +1127,12 @@ export default function ScannerScreen() {
         designation: "",
         message: "Unexpected error while processing scan.",
         status: "INVALID",
-        directionValue: direction,
+        directionValue: activeDirection,
         qr: qr_code,
         gate: settings?.gate?.name || settings?.gate?.code || "Main Gate",
       });
 
-      await playForDirection(false, direction, "INVALID");
+      await playForDirection(false, activeDirection, "INVALID");
       await fetchLiveStats();
     }
   }
@@ -1748,6 +1862,138 @@ export default function ScannerScreen() {
               </Text>
             </Pressable>
           </View>
+        </View>
+      </Modal>
+      <Modal visible={confirmModal} transparent animationType="fade">
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.7)",
+            justifyContent: "center",
+            alignItems: "center",
+            padding: 24,
+          }}
+        >
+          <BlurView
+            intensity={50}
+            tint="dark"
+            style={{
+              width: "100%",
+              borderRadius: 28,
+              overflow: "hidden",
+              backgroundColor: "#0F172A",
+              borderWidth: 1,
+              borderColor: "rgba(255,255,255,0.08)",
+            }}
+          >
+            <LinearGradient
+              colors={["#111827", "#0F172A"]}
+              style={{
+                padding: 24,
+              }}
+            >
+              <View
+                style={{
+                  width: 70,
+                  height: 70,
+                  borderRadius: 24,
+                  backgroundColor: "rgba(245,158,11,0.15)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  alignSelf: "center",
+                  marginBottom: 18,
+                }}
+              >
+                <AlertTriangle size={34} color="#F59E0B" />
+              </View>
+
+              <Text
+                style={{
+                  color: "#FFFFFF",
+                  fontSize: 24,
+                  fontWeight: "900",
+                  textAlign: "center",
+                }}
+              >
+                {confirmData?.title}
+              </Text>
+
+              <Text
+                style={{
+                  color: "#CBD5E1",
+                  fontSize: 15,
+                  lineHeight: 24,
+                  textAlign: "center",
+                  marginTop: 14,
+                  fontWeight: "600",
+                }}
+              >
+                {confirmData?.subtitle}
+              </Text>
+
+              <View
+                style={{
+                  flexDirection: "row",
+                  gap: 12,
+                  marginTop: 28,
+                }}
+              >
+                <Pressable
+                  onPress={() => {
+                    confirmData?.resolve(false);
+
+                    setConfirmModal(false);
+
+                    setConfirmData(null);
+                  }}
+                  style={{
+                    flex: 1,
+                    backgroundColor: "#1E293B",
+                    paddingVertical: 16,
+                    borderRadius: 18,
+                    alignItems: "center",
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: "#FFFFFF",
+                      fontWeight: "900",
+                      fontSize: 15,
+                    }}
+                  >
+                    NO
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => {
+                    confirmData?.resolve(true);
+
+                    setConfirmModal(false);
+
+                    setConfirmData(null);
+                  }}
+                  style={{
+                    flex: 1,
+                    backgroundColor: "#F59E0B",
+                    paddingVertical: 16,
+                    borderRadius: 18,
+                    alignItems: "center",
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: "#FFFFFF",
+                      fontWeight: "900",
+                      fontSize: 15,
+                    }}
+                  >
+                    YES, SWITCH
+                  </Text>
+                </Pressable>
+              </View>
+            </LinearGradient>
+          </BlurView>
         </View>
       </Modal>
     </View>
